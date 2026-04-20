@@ -1,0 +1,25 @@
+# IDE
+.idea/
+
+# R
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Environments
+.env
+.venv
+
+# Data and outputs
+data/
+output/
+
+# OS
+.DS_Store
+Thumbs.db

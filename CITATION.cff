@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+title: "Cancer Latent Space Analysis"
+message: "If you use this work, please cite the repository as follows."
+type: software
+
+authors:
+  - family-names: "Al-Timimi"
+    given-names: "Ali M."
+
+repository-code: "https://github.com/ali-altimimi-phd/cancer-latent-space"
+
+date-released: 2026
+
+references:
+  - type: software
+    title: "Cancer Complexity Analysis"
+    repository-code: "https://github.com/ali-altimimi-phd/global-cancer-complexity"
