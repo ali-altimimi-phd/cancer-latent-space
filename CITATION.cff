@@ -1,17 +1,41 @@
 cff-version: 1.2.0
-title: "Cancer Latent Space Analysis"
+
+title: "Deconstructing the Global Cancer Manifold"
+
 message: "If you use this work, please cite the repository as follows."
+
 type: software
 
 authors:
   - family-names: "Al-Timimi"
     given-names: "Ali M."
 
+abstract: >
+  A quad-engine structural inference framework for analyzing
+  transcriptomic organization in cancer using complexity,
+  entropy, random matrix spectral theory, and latent-space
+  geometry.
+
 repository-code: "https://github.com/ali-altimimi-phd/cancer-latent-space"
+
+keywords:
+  - cancer
+  - transcriptomics
+  - systems biology
+  - latent space
+  - variational autoencoder
+  - complexity
+  - entropy
+  - random matrix theory
+  - Marchenko-Pastur
+  - structural inference
+  - computational oncology
+
+license: "MIT"
 
 date-released: 2026
 
 references:
   - type: software
-    title: "Cancer Complexity Analysis"
+    title: "Global Cancer Complexity"
     repository-code: "https://github.com/ali-altimimi-phd/global-cancer-complexity"

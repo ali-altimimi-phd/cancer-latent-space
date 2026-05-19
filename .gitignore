@@ -20,6 +20,30 @@ __pycache__/
 data/
 output/
 
+# Quarto / rendered documents
+_site/
+.quarto/
+*.html
+*.pdf
+
+# Model artifacts
+*.h5
+*.pt
+*.pth
+*.ckpt
+
 # OS
 .DS_Store
 Thumbs.db
+
+# Legacy / deprecated code anywhere in repo
+**/legacy/
+**/deprecated/
+**/Legacy/
+**/Deprecated/
+
+# Optional: old script variants
+*_legacy.*
+*_deprecated.*
+*.bak
+*.old
