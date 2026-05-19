@@ -1,2 +1,0 @@
-source_file,analysis_scope,engine,input_dim,latent_dim,epochs,batch_size,beta,learning_rate,random_seed,final_train_total_loss,final_val_total_loss,latent_mean,latent_std
-vae_training_summary.csv,latent_space,latent,3000,10,50,32,0.01,0.001,42,56704.251708984375,70319.677734375,1.0880862474441528,10.41036319732666
