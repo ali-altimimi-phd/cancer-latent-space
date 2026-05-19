@@ -1,0 +1,495 @@
+---
+title: "Marchenko--Pastur Spectral Engine: Early Results Reference"
+author: "Ali M. Al-Timimi"
+date: "2026-05-08"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: false
+    code-tools: true
+  pdf:
+    toc: true
+execute:
+  echo: true
+  warning: true
+  message: true
+---
+
+# Purpose
+
+This document is a working reference for the first successful run of the Marchenko--Pastur (MP) spectral engine within the Global Cancer Complexity structural inference framework.
+
+The goal is not to provide a final interpretation, but to preserve the current code, diagnostic plots, and early observations in a reproducible form.
+
+At this stage, the MP engine has successfully propagated the following identifiers across the structural inference pipeline:
+
+- `chip`
+- `group`
+- `comparison`
+- `filter_regime`
+- `condition`
+- MP/spectral summary metrics
+- tumor-minus-normal delta metrics
+
+# Conceptual framing
+
+The MP spectral engine treats each normal--tumor comparison as a transformation in the eigenvalue spectrum of a probe-defined expression space.
+
+For each comparison, the engine computes condition-level spectral summaries for normal and tumor matrices, then derives tumor-minus-normal deltas.
+
+The current focus is on whether tumors show evidence of:
+
+- increased or decreased spectral concentration;
+- redistribution of eigenvalue mass;
+- increased or decreased effective dimensionality;
+- emergence of additional super-MP spectral modes;
+- consistency across chip platforms and probe-selection regimes.
+
+# Load results
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+source(here::here("R/config/global_cancer/structural_inference_config.R"), local = FALSE)
+
+mp_spectral_results <- readRDS(
+  file.path(structural_rdata_dir, "mp_spectral_results.rds")
+)
+```
+
+# Inspect object structure
+
+```{r}
+names(mp_spectral_results)
+str(mp_spectral_results, max.level = 1)
+```
+
+Expected structure:
+
+```text
+summary: condition-level MP/spectral summaries
+deltas : tumor-minus-normal spectral deltas
+```
+
+# Inspect condition-level summaries
+
+```{r}
+summary_df <- mp_spectral_results$summary
+
+dplyr::glimpse(summary_df)
+```
+
+Check computation status:
+
+```{r}
+table(summary_df$status)
+```
+
+Early observed result from the first successful run:
+
+```text
+ok                             102
+skipped_insufficient_dimensions  4
+```
+
+## Early interpretation
+
+Most condition-level spectral summaries were computed successfully. A small number of skipped cases are expected when one side of a comparison has too few samples or too few retained probes after probe-selection and matrix intersection.
+
+These skipped cases should be preserved as QC outcomes rather than silently removed.
+
+# Inspect delta table
+
+```{r}
+delta_df <- mp_spectral_results$deltas
+
+dplyr::glimpse(delta_df)
+```
+
+Check that chip and regime propagation worked:
+
+```{r}
+delta_df |>
+  dplyr::count(chip, filter_regime)
+```
+
+Check unique probe-selection regimes:
+
+```{r}
+unique(delta_df$filter_regime)
+```
+
+Expected regimes from current configuration:
+
+```text
+limma
+variance_top3000
+```
+
+## Early interpretation
+
+Successful recovery of both `limma` and `variance_top3000` confirms that the refactored naming chain is functioning across:
+
+```text
+config
+→ pipeline
+→ wrapper
+→ pairwise spectral engine
+→ paired comparison layer
+→ single-condition spectral layer
+→ MP helper layer
+→ delta table
+```
+
+This is an important software milestone because MP outputs are now regime-aware.
+
+# Basic MP delta metrics
+
+The main tumor-minus-normal delta metrics currently include:
+
+- `largest_eigenvalue_delta`
+- `largest_eigenvalue_fraction_delta`
+- `n_spikes_delta`
+- `spike_fraction_delta`
+- `excess_spectral_mass_delta`
+- `spectral_entropy_delta`
+- `participation_ratio_delta`
+
+These should be interpreted cautiously as structural descriptors, not yet as final biological claims.
+
+# Plot 1: Participation ratio delta vs spectral entropy delta
+
+```{r}
+ggplot(
+  delta_df,
+  aes(
+    x = participation_ratio_delta,
+    y = spectral_entropy_delta,
+    color = filter_regime
+  )
+) +
+  geom_point(size = 3) +
+  facet_wrap(~ chip) +
+  labs(
+    title = "Participation ratio delta vs spectral entropy delta",
+    x = "Participation ratio delta",
+    y = "Spectral entropy delta",
+    color = "Filter regime"
+  )
+```
+
+## Early interpretation
+
+The first successful run showed a strong positive association between `participation_ratio_delta` and `spectral_entropy_delta`.
+
+This is structurally coherent: as eigenvalue mass becomes more evenly distributed, spectral entropy increases and more effective eigenmodes contribute to the spectrum.
+
+This relationship suggests that these metrics are not behaving as unrelated descriptors. Instead, they appear to track a common organizational transformation.
+
+# Plot 2: Spectral entropy delta by chip and regime
+
+```{r}
+ggplot(
+  delta_df,
+  aes(
+    x = filter_regime,
+    y = spectral_entropy_delta
+  )
+) +
+  geom_boxplot() +
+  facet_wrap(~ chip) +
+  labs(
+    title = "Spectral entropy delta by chip and probe-selection regime",
+    x = "Filter regime",
+    y = "Spectral entropy delta"
+  )
+```
+
+## Early interpretation
+
+The boxplots provide a compact regime-level view of tumor-minus-normal spectral entropy changes.
+
+The early results suggest that many tumor comparisons show positive entropy shifts, but the effect is not uniform. Some comparisons show negative or near-zero deltas.
+
+This supports a more nuanced interpretation than “cancer equals disorder.” The framework may instead distinguish different kinds of spectral reorganization.
+
+# Plot 3: Participation ratio delta vs dominant eigenvalue fraction delta
+
+```{r}
+ggplot(
+  delta_df,
+  aes(
+    x = participation_ratio_delta,
+    y = largest_eigenvalue_fraction_delta,
+    color = filter_regime
+  )
+) +
+  geom_point(size = 3) +
+  facet_wrap(~ chip) +
+  labs(
+    title = "Participation ratio delta vs largest eigenvalue fraction delta",
+    x = "Participation ratio delta",
+    y = "Largest eigenvalue fraction delta",
+    color = "Filter regime"
+  )
+```
+
+## Early interpretation
+
+This plot showed a strong inverse relationship between `participation_ratio_delta` and `largest_eigenvalue_fraction_delta`.
+
+Interpretively, this suggests that when the leading eigenmode loses relative dominance, spectral organization becomes more distributed across multiple modes.
+
+This relationship is important because it links three core concepts:
+
+- dominant-mode concentration;
+- effective dimensionality;
+- distributed spectral organization.
+
+# Plot 4: Spike count delta vs spectral entropy delta
+
+```{r}
+ggplot(
+  delta_df,
+  aes(
+    x = n_spikes_delta,
+    y = spectral_entropy_delta,
+    color = filter_regime
+  )
+) +
+  geom_point(size = 3) +
+  facet_wrap(~ chip) +
+  labs(
+    title = "MP spike count delta vs spectral entropy delta",
+    x = "MP spike count delta",
+    y = "Spectral entropy delta",
+    color = "Filter regime"
+  )
+```
+
+## Early interpretation
+
+The early result suggests that increased spike count is often associated with increased spectral entropy.
+
+This is potentially important because additional super-MP modes do not necessarily imply collapse into a single dominant program. In these results, additional spikes often accompany broader spectral participation.
+
+This may indicate structured diversification of spectral organization in some tumor transitions.
+
+# Correlation analysis of delta metrics
+
+```{r}
+delta_metrics <- delta_df |>
+  dplyr::select(
+    largest_eigenvalue_delta,
+    largest_eigenvalue_fraction_delta,
+    n_spikes_delta,
+    spike_fraction_delta,
+    excess_spectral_mass_delta,
+    spectral_entropy_delta,
+    participation_ratio_delta
+  )
+
+cor(delta_metrics, use = "pairwise.complete.obs")
+```
+
+## Early observed correlations
+
+Key correlations from the first successful run:
+
+```text
+participation_ratio_delta vs spectral_entropy_delta      ≈  0.93
+participation_ratio_delta vs largest_eigenvalue_fraction_delta ≈ -0.96
+spectral_entropy_delta vs largest_eigenvalue_fraction_delta    ≈ -0.92
+largest_eigenvalue_delta vs excess_spectral_mass_delta         ≈  0.83
+n_spikes_delta vs participation_ratio_delta                    ≈  0.71
+```
+
+## Early interpretation
+
+The correlation matrix suggests that the MP-derived metrics are organized around a dominant structural axis.
+
+One pole appears to represent distributed spectral organization:
+
+- increased spectral entropy;
+- increased participation ratio;
+- increased spike count;
+- reduced leading eigenvalue fraction.
+
+The opposite pole appears to represent concentrated spectral organization:
+
+- increased leading eigenvalue dominance;
+- increased excess spectral mass;
+- reduced entropy;
+- reduced effective dimensionality.
+
+This may become a useful distinction between distributed restructuring and concentrated restructuring.
+
+# PCA of MP delta metrics
+
+```{r}
+pca_res <- prcomp(
+  na.omit(delta_metrics),
+  scale. = TRUE
+)
+
+summary(pca_res)
+```
+
+Inspect loadings:
+
+```{r}
+round(pca_res$rotation, 3)
+```
+
+## Early observed PCA result
+
+The first run gave approximately:
+
+```text
+PC1 proportion of variance: 0.7366
+PC2 proportion of variance: 0.1362
+Cumulative PC1 + PC2:       0.8728
+```
+
+## Early interpretation
+
+The fact that PC1 explains approximately 74% of the variance suggests that these MP delta metrics largely collapse onto a dominant spectral-organization axis.
+
+This is potentially significant. It suggests that tumor-associated spectral changes may not be a collection of unrelated metric shifts, but rather a coordinated transformation in spectral organization.
+
+PC2 may represent a secondary axis, possibly separating spike structure, excess spectral mass, or chip/regime-specific behavior from the main distributed-versus-concentrated spectral axis. This requires inspection of PCA loadings and later biological annotation.
+
+# Suggested next diagnostics
+
+## PCA score plot by chip and regime
+
+```{r}
+pca_scores <- as.data.frame(pca_res$x) |>
+  dplyr::mutate(
+    row_id = dplyr::row_number()
+  )
+
+pca_metadata <- delta_df |>
+  dplyr::select(chip, group, comparison, filter_regime) |>
+  tidyr::drop_na()
+
+pca_plot_df <- dplyr::bind_cols(
+  pca_metadata[seq_len(nrow(pca_scores)), ],
+  pca_scores
+)
+
+ggplot(
+  pca_plot_df,
+  aes(
+    x = PC1,
+    y = PC2,
+    color = filter_regime,
+    shape = chip
+  )
+) +
+  geom_point(size = 3) +
+  labs(
+    title = "PCA of MP spectral delta metrics",
+    x = "PC1",
+    y = "PC2",
+    color = "Filter regime",
+    shape = "Chip"
+  )
+```
+
+Note: if rows with missing values are removed before PCA, metadata alignment should be handled carefully. A safer version is provided below.
+
+## Safer PCA score plot with explicit complete-case alignment
+
+```{r}
+complete_idx <- stats::complete.cases(delta_metrics)
+
+pca_res_safe <- prcomp(
+  delta_metrics[complete_idx, ],
+  scale. = TRUE
+)
+
+pca_plot_df_safe <- delta_df[complete_idx, ] |>
+  dplyr::select(chip, group, comparison, filter_regime) |>
+  dplyr::bind_cols(as.data.frame(pca_res_safe$x))
+
+ggplot(
+  pca_plot_df_safe,
+  aes(
+    x = PC1,
+    y = PC2,
+    color = filter_regime,
+    shape = chip
+  )
+) +
+  geom_point(size = 3) +
+  labs(
+    title = "PCA of MP spectral delta metrics",
+    x = "PC1",
+    y = "PC2",
+    color = "Filter regime",
+    shape = "Chip"
+  )
+```
+
+# Cautions
+
+The current MP implementation should be interpreted carefully because many comparisons have very large feature-to-sample ratios.
+
+For example, `q = n_features / n_samples` can be very large. Classical MP theory is most stable under appropriate random-matrix asymptotics, and small sample sizes may distort the empirical spectrum.
+
+Therefore, current MP outputs should be treated as structural spectral descriptors and exploratory inference rather than final strict random-matrix-theoretic claims.
+
+Potential future refinements include:
+
+- shrinkage covariance/correlation estimation;
+- empirical null simulation;
+- randomized spectral diagnostics;
+- sensitivity analysis across `min_samples`;
+- comparison of correlation-based vs covariance-based spectra;
+- chip-specific robustness analysis;
+- biological annotation of extreme PC1/PC2 comparisons.
+
+# Working interpretation template
+
+For each comparison, a preliminary interpretation can be generated from the direction of key MP deltas:
+
+| Pattern | Possible interpretation |
+|---|---|
+| `spectral_entropy_delta > 0` and `participation_ratio_delta > 0` | Tumor spectrum becomes more distributed across eigenmodes. |
+| `largest_eigenvalue_fraction_delta < 0` | Dominant spectral mode loses relative concentration. |
+| `n_spikes_delta > 0` | More super-MP structured modes emerge. |
+| `excess_spectral_mass_delta > 0` | Structured spectral mass above the MP edge increases. |
+| `spectral_entropy_delta < 0` and `participation_ratio_delta < 0` | Tumor spectrum becomes more concentrated. |
+| `largest_eigenvalue_fraction_delta > 0` | Leading eigenmode becomes more dominant. |
+
+# Provisional conceptual summary
+
+The early MP results support a distinction between at least two spectral reorganization patterns:
+
+## Distributed restructuring
+
+Characterized by:
+
+- increased spectral entropy;
+- increased participation ratio;
+- reduced largest eigenvalue fraction;
+- often increased spike count.
+
+This suggests that tumor-associated organization is redistributed across multiple spectral modes.
+
+## Concentrated restructuring
+
+Characterized by:
+
+- increased largest eigenvalue or largest eigenvalue fraction;
+- increased excess spectral mass;
+- reduced spectral entropy;
+- reduced participation ratio.
+
+This suggests that tumor-associated organization may collapse into fewer dominant coordinated modes.
+
+These patterns are not yet final biological categories. They are provisional structural phenotypes to be tested against cancer type, chip platform, probe-selection regime, GO/KEGG interpretation, and later latent-space geometry.

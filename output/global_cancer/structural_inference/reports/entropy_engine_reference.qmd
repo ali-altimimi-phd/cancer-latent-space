@@ -1,0 +1,784 @@
+---
+title: "Entropy Engine: Early Results Reference"
+author: "Ali M. Al-Timimi"
+date: "2026-05-09"
+format:
+  html:
+    toc: true
+    code-tools: true
+  pdf:
+    toc: true
+execute:
+  warning: true
+  message: true
+---
+
+# Purpose
+
+This document is a working reference for the first successful run of the entropy structural engine within the Global Cancer Complexity structural inference framework.
+
+The goal is not to provide a final biological interpretation, but to preserve the current code, diagnostic plots, and early observations in a reproducible form.
+
+At this stage, the entropy engine has successfully propagated the following identifiers across the structural inference pipeline:
+
+- `chip`
+- `group`
+- `comparison`
+- `filter_regime`
+- `engine`
+- `gene_set_mode`
+- `gene_set_name`
+- entropy metrics
+- tumor-minus-normal delta metrics
+- permutation-derived p-values
+- FDR-adjusted p-values
+
+The current implementation focuses on `gene_set_mode = "FULL"`, meaning entropy is computed over the full filtered probe set for each normal--tumor comparison and probe-selection regime.
+
+# Conceptual framework
+
+The entropy engine treats each normal--tumor comparison as a transformation in transcriptomic disorder and spectral organization.
+
+Two complementary entropy measures are currently evaluated:
+
+- **Shannon entropy:** expression-level uncertainty and distributional disorder;
+- **Spectral entropy:** entropy of covariance-eigenvalue structure, reflecting the distribution of transcriptomic variance across effective modes.
+
+Positive entropy deltas suggest increased transcriptomic disorder or
+broader variance dispersion in tumor. Negative entropy deltas suggest increasing structural concentration, ordering, or reduced uncertainty in tumor.
+
+The current focus is on whether tumors show evidence of:
+
+- increased or decreased Shannon entropy;
+- increased or decreased spectral entropy;
+- concordance or divergence between Shannon and spectral entropy changes;
+- consistency across chip platforms and probe-selection regimes;
+- compatibility with complexity and Marchenko--Pastur spectral results.
+
+## Why spectral entropy is central to the chaos/anti-chaos distinction
+
+Although both Shannon entropy and spectral entropy are useful, spectral
+entropy is currently the more direct structural measure for the
+chaos/anti-chaos interpretation used in this framework.
+
+Shannon entropy computed on raw expression values summarizes the
+distributional uncertainty of expression magnitudes. It is therefore
+sensitive to the marginal spread of values across the expression matrix.
+This can be useful descriptively, but it does not directly distinguish
+whether variation is organized across many coordinated modes or
+concentrated into a smaller number of dominant modes.
+
+Spectral entropy, by contrast, is computed from the covariance
+eigenspectrum. It therefore summarizes how transcriptomic variance is
+distributed across orthogonal modes of collective gene-expression
+variation.
+
+In this framework, a tumor transition is interpreted as more
+**chaotic** when variance becomes more diffusely distributed across
+multiple spectral modes. This corresponds to a broader eigenspectrum and
+higher spectral entropy.
+
+Conversely, a transition is interpreted as more **anti-chaotic** when
+variance becomes more concentrated into fewer dominant modes. This
+corresponds to spectral compression, lower spectral entropy, and a more
+ordered covariance structure.
+
+Thus:
+
+| Pattern | Structural interpretation |
+|---|---|
+| `spectral_delta > 0` | Variance becomes more diffusely distributed across modes; interpreted as increased spectral disorder and potential chaotic tendency. |
+| `spectral_delta < 0` | Variance becomes more concentrated into fewer modes; interpreted as increased spectral ordering or anti-chaotic tendency. |
+| `spectral_delta ≈ 0` | No strong evidence for a major shift in covariance-spectrum organization. |
+
+This distinction is important because cancer may alter not only the
+amount of expression variability, but also the organization of that
+variability. Spectral entropy is therefore closer to the structural
+question motivating this project: whether tumorigenesis involves a gain,
+loss, or reorganization of system-level transcriptomic order.
+
+For this reason, Shannon entropy should currently be treated as a
+supporting distributional descriptor, while spectral entropy should be
+treated as the primary entropy-based structural descriptor.
+
+## Spectral entropy as a proxy for chaotic tendency
+
+The present framework does not claim to directly measure dynamical chaos
+in the strict mathematical sense used in nonlinear dynamical systems
+theory (e.g., Lyapunov exponents, strange attractors, or deterministic
+chaotic trajectories).
+
+Instead, spectral entropy is used as a structural proxy for the degree
+to which transcriptomic variance is diffusely distributed across
+multiple coordinated modes of system behavior.
+
+Spectral entropy is computed from the covariance eigenspectrum. The
+eigenvalues summarize how total transcriptomic variance is distributed
+across orthogonal modes of collective variation.
+
+When variance is concentrated into a small number of dominant modes, the
+eigenspectrum is relatively ordered and spectrally compressed. This
+produces lower spectral entropy and is interpreted here as a more
+ordered or anti-chaotic structural state.
+
+When variance is distributed more evenly across many modes, the
+eigenspectrum becomes broader and less concentrated. This produces
+higher spectral entropy and is interpreted as increased spectral
+disorder or chaotic tendency.
+
+The rationale for this interpretation is that highly organized systems
+often exhibit constrained variance concentrated into relatively few
+coordinated dimensions, whereas increasingly disordered or unstable
+systems exhibit variance dispersion across larger numbers of effective
+degrees of freedom.
+
+Thus, spectral entropy is not treated here as a direct dynamical proof
+of chaos, but rather as a systems-level descriptor of covariance
+organization whose increase may reflect increasing structural disorder,
+loss of coordinated regulation, or expansion of effective dynamical
+degrees of freedom during tumorigenesis.
+
+This interpretation also aligns naturally with related quantities used
+elsewhere in the framework, including:
+
+- effective rank;
+- participation ratio;
+- MP spectral entropy;
+- latent-space anisotropy;
+- covariance-spectrum dispersion.
+
+Accordingly, spectral entropy is treated as a biologically interpretable
+proxy for transcriptomic disorder and potential chaotic tendency rather
+than as a literal dynamical-chaos measurement.
+
+## Current entropy metrics
+
+The main paired entropy output currently includes:
+
+- `shannon_normal`
+- `shannon_tumor`
+- `shannon_delta`
+- `shannon_direction`
+- `spectral_normal`
+- `spectral_tumor`
+- `spectral_delta`
+- `spectral_direction`
+- `p_perm_spectral`
+- `p_perm_shannon`
+- `p_perm_shannon_fdr`
+
+Depending on the current implementation of `compare_pair_entropy()`, the output may also include entropy bootstrap intervals. If these are not yet present, bootstrap inference should be treated as a planned extension rather than a current result.
+
+### Statistical notes
+
+These should be interpreted cautiously as structural descriptors rather than as finalized biological claims. Importantly, these metrics may capture partially distinct structural dimensions rather than redundant summaries of a single underlying quantity.
+
+The permutation p-values (`p_perm_shannon`)/(`p_perm_spectral`)  are currently computed using a two-sided permutation framework:
+
+```text
+mean(abs(null_distribution) >= abs(observed_difference))
+```
+
+This choice reflects the current exploratory nature of the structural inference framework, where both entropy gain and entropy loss are considered biologically meaningful possibilities.
+
+Adjusted permutation p-values (`p_perm_shannon_fdr`) are computed using the Benjamini--Hochberg procedure within each `chip × filter_regime × gene_set_mode` stratum.
+
+Permutation procedures are seeded for reproducibility.
+
+# Load results
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+source(
+  here::here("R/config/global_cancer/structural_inference_config.R"),
+  local = FALSE
+)
+
+entropy_results <- readRDS(
+  file.path(structural_rdata_dir, "entropy_results.rds")
+)
+```
+
+# Inspect object structure
+
+```{r}
+names(entropy_results)
+str(entropy_results, max.level = 1)
+```
+
+Expected structure:
+
+```text
+summary: paired normal--tumor entropy summaries
+```
+
+# Inspect summary table
+
+```{r}
+entropy_df <- entropy_results$summary
+
+dplyr::glimpse(entropy_df)
+```
+
+Check computation status:
+
+```{r}
+entropy_df |>
+  dplyr::count(status)
+```
+
+Check that chip and regime propagation worked:
+
+```{r}
+entropy_df |>
+  dplyr::count(chip, filter_regime)
+```
+
+Check unique probe-selection regimes:
+
+```{r}
+unique(entropy_df$filter_regime)
+```
+
+Expected regimes from current configuration:
+
+```text
+limma
+variance_top3000
+```
+
+## Early interpretation
+
+Successful recovery of both `limma` and `variance_top3000` confirms that the entropy engine now follows the same regime-aware structural architecture as the MP spectral and complexity engines.
+
+This means the following chain is functioning:
+
+```text
+config
+→ pipeline
+→ wrapper
+→ pairwise entropy engine
+→ paired comparison layer
+→ core entropy metrics
+→ standardized summary table
+```
+
+The initial run may produce a small number of expected skips for limma comparisons with too few retained probes. These should be retained as QC information rather than treated as software failures.
+
+
+
+# Plot 1: Shannon entropy delta by chip and regime
+
+```{r}
+ggplot(
+  entropy_df,
+  aes(
+    x = filter_regime,
+    y = shannon_delta
+  )
+) +
+  geom_boxplot() +
+  facet_wrap(~ chip) +
+  labs(
+    title = "Shannon entropy delta by chip and probe-selection regime",
+    x = "Filter regime",
+    y = "Tumor-minus-normal Shannon entropy delta"
+  )
+```
+
+## Early interpretation
+
+This plot provides a compact regime-level view of Shannon entropy gain or loss.
+
+Positive `shannon_delta` indicates that tumor matrices have higher expression-level entropy than their matched normal matrices. Negative `shannon_delta` indicates reduced expression-level entropy in tumor.
+
+The interpretation should remain cautious because Shannon entropy can be sensitive to the marginal distribution of expression values, preprocessing, feature count, and filtering regime.
+
+# Plot 2: Spectral entropy delta by chip and regime
+
+```{r}
+ggplot(
+  entropy_df,
+  aes(
+    x = filter_regime,
+    y = spectral_delta
+  )
+) +
+  geom_boxplot() +
+  facet_wrap(~ chip) +
+  labs(
+    title = "Spectral entropy delta by chip and probe-selection regime",
+    x = "Filter regime",
+    y = "Tumor-minus-normal spectral entropy delta"
+  )
+```
+
+## Early interpretation
+
+Spectral entropy provides a complementary measure of how variance is distributed across covariance eigenmodes.
+
+Positive `spectral_delta` suggests that tumor-associated variation is distributed more broadly across spectral modes. Negative `spectral_delta` suggests concentration of variance into fewer dominant modes.
+
+This metric should later be compared directly with MP participation-ratio, MP spectral-entropy, effective-rank, and latent-space covariance metrics.
+
+# Plot 3: Shannon delta vs spectral entropy delta
+
+```{r}
+ggplot(
+  entropy_df,
+  aes(
+    x = shannon_delta,
+    y = spectral_delta,
+    color = filter_regime
+  )
+) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  geom_point(size = 3) +
+  facet_wrap(~ chip) +
+  labs(
+    title = "Shannon entropy delta vs spectral entropy delta",
+    x = "Shannon entropy delta",
+    y = "Spectral entropy delta",
+    color = "Filter regime"
+  )
+```
+
+## Early interpretation
+
+This plot tests whether expression-level entropy and spectral entropy move together or diverge across tumor transitions.
+
+| Pattern | Possible interpretation |
+|---|---|
+| `shannon_delta > 0`, `spectral_delta > 0` | Increased expression-level disorder with broader spectral variance dispersion. |
+| `shannon_delta > 0`, `spectral_delta < 0` | Increased marginal uncertainty but more concentrated covariance structure. |
+| `shannon_delta < 0`, `spectral_delta > 0` | Reduced marginal uncertainty but broader spectral organization. |
+| `shannon_delta < 0`, `spectral_delta < 0` | Reduced entropy and increased spectral concentration. |
+
+This distinction is central because Shannon and spectral entropy may represent different structural dimensions of tumor-associated transformation.
+
+# Plot 4: Spectral entropy direction counts
+
+```{r}
+entropy_df |>
+  dplyr::count(chip, filter_regime, spectral_direction) |>
+  ggplot(
+    aes(
+      x = filter_regime,
+      y = n,
+      fill = spectral_direction
+    )
+  ) +
+  geom_col(position = "dodge") +
+  facet_wrap(~ chip) +
+  labs(
+    title = "Spectral entropy direction counts by chip and regime",
+    x = "Filter regime",
+    y = "Number of comparisons",
+    fill = "Spectral direction"
+  )
+```
+
+## Early interpretation
+
+This plot provides a coarse summary of how often spectral entropy increases, decreases, or remains near neutral under each chip and probe-selection regime.
+
+Spectral direction is emphasized here because it is structurally closer to the MP spectral engine and to effective-rank-style complexity measures than raw Shannon entropy.
+
+This plot should not be treated as a final biological result, but it is useful for detecting gross asymmetry across platforms or filtering regimes.
+
+# Plot 5: Shannon entropy direction counts
+
+```{r}
+entropy_df |>
+  dplyr::count(chip, filter_regime, shannon_direction) |>
+  ggplot(
+    aes(
+      x = filter_regime,
+      y = n,
+      fill = shannon_direction
+    )
+  ) +
+  geom_col(position = "dodge") +
+  facet_wrap(~ chip) +
+  labs(
+    title = "Shannon entropy direction counts by chip and regime",
+    x = "Filter regime",
+    y = "Number of comparisons",
+    fill = "Shannon direction"
+  )
+```
+
+## Early interpretation
+
+This plot summarizes the expression-level entropy direction categories.
+
+Comparing this plot with the spectral direction plot can help identify whether marginal expression disorder and covariance-spectral disorder are broadly concordant or whether they diverge by platform, regime, or tumor comparison.
+
+# Correlation analysis of entropy metrics
+
+```{r}
+entropy_metrics <- entropy_df |>
+  dplyr::select(
+    shannon_delta,
+    spectral_delta
+  )
+
+cor(entropy_metrics, use = "pairwise.complete.obs")
+```
+
+## Early interpretation
+
+This correlation matrix tests whether Shannon and spectral entropy deltas behave as redundant summaries or as partially distinct descriptors.
+
+A high positive correlation would suggest a shared entropy axis. A weak or negative correlation would suggest that marginal expression uncertainty and covariance-spectral organization capture different aspects of tumor-associated structural transformation.
+
+# PCA of entropy delta metrics
+
+```{r}
+entropy_metrics_clean <- entropy_metrics |>
+  tidyr::drop_na()
+
+nonconstant_cols <- entropy_metrics_clean |>
+  dplyr::summarise(
+    dplyr::across(
+      dplyr::everything(),
+      ~ sd(.x, na.rm = TRUE) > 0
+    )
+  ) |>
+  unlist()
+
+entropy_metrics_pca <- entropy_metrics_clean[, nonconstant_cols, drop = FALSE]
+
+if (ncol(entropy_metrics_pca) >= 2) {
+  entropy_pca <- prcomp(
+    entropy_metrics_pca,
+    scale. = TRUE
+  )
+  summary(entropy_pca)
+  round(entropy_pca$rotation, 3)
+} else {
+  message("PCA skipped: fewer than two nonconstant entropy delta metrics.")
+}
+```
+
+## PCA score plot
+
+```{r}
+if (exists("entropy_pca")) {
+  pca_row_idx <- stats::complete.cases(entropy_metrics) &
+    apply(entropy_metrics, 1, function(x) all(is.finite(x)))
+  
+  entropy_pca_plot_df <- entropy_df[pca_row_idx, ] |>
+    dplyr::select(chip, group, comparison, filter_regime) |>
+    dplyr::bind_cols(as.data.frame(entropy_pca$x))
+  
+  ggplot(
+    entropy_pca_plot_df,
+    aes(
+      x = PC1,
+      y = PC2,
+      color = filter_regime,
+      shape = chip
+    )
+  ) +
+    geom_hline(yintercept = 0, linetype = "dashed") +
+    geom_vline(xintercept = 0, linetype = "dashed") +
+    geom_point(size = 3) +
+    labs(
+      title = "PCA of entropy delta metrics",
+      x = "PC1",
+      y = "PC2",
+      color = "Filter regime",
+      shape = "Chip"
+    )
+}
+```
+
+## Early interpretation
+
+With only Shannon and spectral entropy deltas, PCA is mainly a diagnostic convenience rather than a substantive dimensionality-reduction analysis.
+
+If both entropy metrics are retained and nonconstant, PC1 may represent a shared entropy-gain/loss axis, while PC2 may represent divergence between expression-level entropy and covariance-spectral entropy.
+
+This section becomes more useful if bootstrap summaries, additional entropy variants, or gene-set-level entropy modes are added later.
+
+# Cross-engine alignment with complexity metrics
+
+```{r}
+complexity_path <- file.path(structural_rdata_dir, "complexity_results.rds")
+
+if (file.exists(complexity_path)) {
+  complexity_results <- readRDS(complexity_path)
+  complexity_df <- complexity_results$summary
+  
+  entropy_complexity_df <- entropy_df |>
+    dplyr::inner_join(
+      complexity_df,
+      by = c(
+        "chip",
+        "group",
+        "comparison",
+        "filter_regime",
+        "gene_set_mode",
+        "gene_set_name"
+      ),
+      suffix = c("_entropy", "_complexity")
+    )
+  
+  dplyr::glimpse(entropy_complexity_df)
+} else {
+  message("Complexity results not found; skipping complexity alignment.")
+}
+```
+
+## Plot: Spectral entropy delta vs effective-rank delta
+
+```{r}
+if (exists("entropy_complexity_df") && nrow(entropy_complexity_df) > 0) {
+  ggplot(
+    entropy_complexity_df,
+    aes(
+      x = effrank_delta,
+      y = spectral_delta,
+      color = filter_regime
+    )
+  ) +
+    geom_hline(yintercept = 0, linetype = "dashed") +
+    geom_vline(xintercept = 0, linetype = "dashed") +
+    geom_point(size = 3) +
+    facet_wrap(~ chip) +
+    labs(
+      title = "Spectral entropy delta vs effective-rank delta",
+      x = "Effective-rank delta",
+      y = "Spectral entropy delta",
+      color = "Filter regime"
+    )
+}
+```
+
+## Plot: Shannon entropy delta vs SVD kappa delta
+
+```{r}
+if (exists("entropy_complexity_df") && nrow(entropy_complexity_df) > 0) {
+  ggplot(
+    entropy_complexity_df,
+    aes(
+      x = kappa_delta,
+      y = shannon_delta,
+      color = filter_regime
+    )
+  ) +
+    geom_hline(yintercept = 0, linetype = "dashed") +
+    geom_vline(xintercept = 0, linetype = "dashed") +
+    geom_point(size = 3) +
+    facet_wrap(~ chip) +
+    labs(
+      title = "Shannon entropy delta vs SVD kappa delta",
+      x = "SVD kappa delta",
+      y = "Shannon entropy delta",
+      color = "Filter regime"
+    )
+}
+```
+
+## Early interpretation
+
+This section begins to evaluate whether entropy shifts align with complexity shifts.
+
+In particular, `spectral_delta` should be inspected alongside `effrank_delta`, because both summarize aspects of how variation is distributed across effective dimensions or eigenmodes.
+
+By contrast, `shannon_delta` and `kappa_delta` may diverge because Shannon entropy is a distribution-level uncertainty measure whereas SVD kappa reflects matrix conditioning.
+
+# Cross-engine alignment with MP spectral metrics
+
+```{r}
+mp_path <- file.path(structural_rdata_dir, "mp_results.rds")
+
+if (file.exists(mp_path)) {
+  mp_results <- readRDS(mp_path)
+  mp_df <- mp_results$summary
+  
+  entropy_mp_df <- entropy_df |>
+    dplyr::inner_join(
+      mp_df,
+      by = c(
+        "chip",
+        "group",
+        "comparison",
+        "filter_regime",
+        "gene_set_mode",
+        "gene_set_name"
+      ),
+      suffix = c("_entropy", "_mp")
+    )
+  
+  dplyr::glimpse(entropy_mp_df)
+} else {
+  message("MP results not found; skipping MP alignment.")
+}
+```
+
+## Early interpretation
+
+This placeholder is included to preserve parallel structure with the complexity reference notebook.
+
+The most relevant future comparisons are likely to include:
+
+- entropy `spectral_delta` vs MP spectral entropy delta;
+- entropy `spectral_delta` vs MP participation-ratio delta;
+- entropy `shannon_delta` vs MP outlier or bulk summaries, if available.
+
+Column names should be verified against the current MP output schema before adding plots here.
+
+# Suggested next diagnostics
+
+## Rank comparisons by largest Shannon entropy gain
+
+```{r}
+entropy_df |>
+  dplyr::arrange(desc(shannon_delta)) |>
+  dplyr::select(
+    chip,
+    filter_regime,
+    group,
+    comparison,
+    shannon_normal,
+    shannon_tumor,
+    shannon_delta,
+    shannon_direction,
+    p_perm_shannon,
+    p_perm_shannon_fdr
+  ) |>
+  head(15)
+```
+
+## Rank comparisons by largest Shannon entropy loss
+
+```{r}
+entropy_df |>
+  dplyr::arrange(shannon_delta) |>
+  dplyr::select(
+    chip,
+    filter_regime,
+    group,
+    comparison,
+    shannon_normal,
+    shannon_tumor,
+    shannon_delta,
+    shannon_direction,
+    p_perm_shannon,
+    p_perm_shannon_fdr
+  ) |>
+  head(15)
+```
+
+## Rank comparisons by largest spectral entropy gain
+
+```{r}
+entropy_df |>
+  dplyr::arrange(desc(spectral_delta)) |>
+  dplyr::select(
+    chip,
+    filter_regime,
+    group,
+    comparison,
+    spectral_normal,
+    spectral_tumor,
+    spectral_delta,
+    spectral_direction,
+    p_perm_spectral
+  ) |>
+  head(15)
+```
+
+## Rank comparisons by largest spectral entropy loss
+
+```{r}
+entropy_df |>
+  dplyr::arrange(spectral_delta) |>
+  dplyr::select(
+    chip,
+    filter_regime,
+    group,
+    comparison,
+    spectral_normal,
+    spectral_tumor,
+    spectral_delta,
+    spectral_direction,
+    p_perm_spectral
+  ) |>
+  head(15)
+```
+
+## Check regime robustness
+
+```{r}
+entropy_df |>
+  dplyr::select(
+    chip,
+    group,
+    comparison,
+    filter_regime,
+    shannon_delta,
+    spectral_delta
+  ) |>
+  tidyr::pivot_wider(
+    names_from = filter_regime,
+    values_from = c(shannon_delta, spectral_delta)
+  )
+```
+
+# Cautions
+
+The entropy engine is now structurally integrated, but the current results should remain exploratory.
+
+Important cautions:
+
+- Shannon entropy and spectral entropy are not interchangeable.
+- Entropy changes should not be interpreted as direct evidence of biological chaos without additional support.
+- Probe-selection regime, sample size, matrix rank, and normalization choices may influence entropy summaries.
+- Limma-based regimes can produce skipped comparisons when fewer than five selected probes are retained.
+- FDR-adjusted permutation results should be interpreted within the defined `chip × filter_regime × gene_set_mode` stratum.
+- Cross-engine interpretation should wait until entropy, complexity, MP, and latent-space summaries are compared under matched identifiers.
+
+# Working interpretation template
+
+For each comparison, a cautious preliminary interpretation can use the following structure:
+
+```text
+For [comparison] on [chip] under [filter_regime], tumor samples showed
+[an increase / a decrease / little change] in Shannon entropy and
+[an increase / a decrease / little change] in spectral entropy relative
+to matched normal samples.
+
+This suggests a possible shift in [expression-level uncertainty / spectral
+variance organization / both], but this should be interpreted as a structural
+descriptor rather than a finalized biological claim.
+
+Permutation evidence was [weak / moderate / strong] before FDR correction
+and [retained / not retained] after FDR adjustment within the relevant
+chip × filter_regime × gene_set_mode stratum.
+```
+
+# Provisional conceptual summary
+
+The entropy structural engine now provides a regime-aware, chip-aware, comparison-aware summary of tumor-minus-normal entropy shifts.
+
+The central interpretive distinction is between:
+
+- **Shannon entropy**, which summarizes expression-level uncertainty; and
+- **spectral entropy**, which summarizes the distribution of covariance structure across eigenmodes.
+
+The main working hypothesis is not simply that cancer gains or loses entropy globally, but that different tumor transitions may show different combinations of marginal disorder and spectral reorganization.
+
+These entropy signatures should ultimately be interpreted alongside:
+
+- complexity deltas;
+- MP spectral metrics;
+- latent-space geometry;
+- GO/KEGG/MSigDB biological annotations;
+- comparison-specific normal and tumor sample composition.

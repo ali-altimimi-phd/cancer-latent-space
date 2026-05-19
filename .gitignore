@@ -18,7 +18,7 @@ __pycache__/
 
 # Data and outputs
 data/
-output/
+# output/
 
 # Quarto / rendered documents
 _site/

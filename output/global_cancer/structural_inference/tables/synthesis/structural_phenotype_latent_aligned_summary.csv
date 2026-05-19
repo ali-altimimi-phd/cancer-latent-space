@@ -1,0 +1,12 @@
+chip,filter_regime,engine,metric,inference_status,n_comparisons,n_values,mean_value,median_value,sd_value,n_tumor_greater,n_tumor_lower
+hu35ksuba,variance_global,complexity,effrank_delta,permutation_available,15,15,0.3406666666666667,0.30999999999999983,0.3098263722674055,13,2
+hu35ksuba,variance_global,complexity,kappa_delta,permutation_available,15,15,5.246666666666667,9.36,29.628495132380987,9,6
+hu35ksuba,variance_global,entropy,shannon_delta,permutation_available,15,15,0.6061333333333333,0.657,0.47436978744234465,12,2
+hu35ksuba,variance_global,entropy,spectral_delta,permutation_available,15,15,0.2670666666666667,0.229,0.22358969649997826,13,2
+hu35ksuba,variance_global,latent,centroid_distance,structural_engine,13,13,25.77250352973748,25.847101081968628,7.6388588416201255,13,0
+hu35ksuba,variance_global,latent,latent_eig_entropy_delta,structural_engine,13,13,0.4129626237578306,0.29342768605971425,0.38112448003946664,11,2
+hu35ksuba,variance_global,latent,latent_pr_delta,structural_engine,13,13,0.9593907685045502,0.8436079751323318,1.0266657265611578,11,2
+hu35ksuba,variance_global,mp,excess_spectral_mass_delta,descriptive_only,15,14,-228.57383095636678,-238.15690784206794,198.0950610345052,1,13
+hu35ksuba,variance_global,mp,largest_eigenvalue_fraction_delta,descriptive_only,15,14,-0.16378570683571253,-0.16568820550603688,0.14869653641510344,1,13
+hu35ksuba,variance_global,mp,participation_ratio_delta,descriptive_only,15,14,2.125731821637552,2.181388912095188,1.7374564502315555,13,1
+hu35ksuba,variance_global,mp,spectral_entropy_delta,descriptive_only,15,14,0.5076302656581914,0.5717634661613832,0.3991537990830267,12,2
